@@ -1,0 +1,1258 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>نظام إدارة وتلخيص العمل اليومي للمشاريع</title>
+    <!-- تحميل خط Cairo العربي العصري -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <!-- تحميل مكتبة Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- تحميل أيقونات Lucide -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Cairo', 'sans-serif'],
+                    },
+                    colors: {
+                        brand: {
+                            50: '#eff6ff',
+                            100: '#dbeafe',
+                            500: '#3b82f6',
+                            600: '#2563eb',
+                            700: '#1d4ed8',
+                            800: '#1e40af',
+                            900: '#1e3a8a',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            font-family: 'Cairo', sans-serif;
+            background-color: #f8fafc;
+        }
+        /* تخصيص شريط التمرير */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f5f9;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+
+        /* تنسيقات الطباعة النظيفة */
+        @media print {
+            body {
+                background-color: #ffffff !important;
+                color: #000000 !important;
+            }
+            .no-print {
+                display: none !important;
+            }
+            .print-only {
+                display: block !important;
+            }
+            .print-container {
+                box-shadow: none !important;
+                border: none !important;
+                padding: 0 !important;
+                margin: 0 !important;
+                width: 100% !important;
+                max-width: 100% !important;
+            }
+            table {
+                width: 100% !important;
+                border-collapse: collapse !important;
+                font-size: 11px !important;
+            }
+            th, td {
+                border: 1px solid #cbd5e1 !important;
+                padding: 6px 8px !important;
+                text-align: right !important;
+            }
+            th {
+                background-color: #f1f5f9 !important;
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
+            .badge-print {
+                border: 1px solid #94a3b8 !important;
+                background: transparent !important;
+                color: #000 !important;
+            }
+        }
+    </style>
+</head>
+<body class="text-slate-800 antialiased min-h-screen flex flex-col">
+
+    <!-- إشعار عائم (Toast Notification) بدلاً من alert -->
+    <div id="toast-container" class="fixed bottom-5 left-5 z-50 flex flex-col gap-2 no-print"></div>
+
+    <!-- الشريط العلوي -->
+    <header class="bg-gradient-to-l from-slate-900 via-brand-900 to-slate-900 text-white shadow-lg no-print">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+            <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                <div class="flex items-center gap-3">
+                    <div class="bg-brand-500/20 border border-brand-400/30 p-2.5 rounded-xl">
+                        <i data-lucide="clipboard-list" class="w-7 h-7 text-brand-300"></i>
+                    </div>
+                    <div>
+                        <h1 class="text-xl sm:text-2xl font-bold tracking-tight">نظام إدارة وتلخيص العمل اليومي</h1>
+                        <p class="text-xs sm:text-sm text-slate-300">متابعة المشاريع الميدانية، المعاينات، ومباشرة الأعمال</p>
+                    </div>
+                </div>
+
+                <!-- أزرار الإجراءات الرئيسية -->
+                <div class="flex flex-wrap items-center gap-2 sm:gap-3">
+                    <button onclick="openSummaryModal()" class="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2.5 rounded-xl text-sm font-semibold shadow-sm transition active:scale-95">
+                        <i data-lucide="file-text" class="w-4 h-4"></i>
+                        <span>ملخص العمل الجاهز</span>
+                    </button>
+                    <button onclick="exportToCSV()" class="flex items-center gap-2 bg-slate-700 hover:bg-slate-600 text-white px-3.5 py-2.5 rounded-xl text-sm font-semibold shadow-sm transition active:scale-95" title="تصدير إلى ملف Excel / CSV">
+                        <i data-lucide="download" class="w-4 h-4"></i>
+                        <span class="hidden sm:inline">تصدير Excel</span>
+                    </button>
+                    <button onclick="window.print()" class="flex items-center gap-2 bg-slate-700 hover:bg-slate-600 text-white px-3.5 py-2.5 rounded-xl text-sm font-semibold shadow-sm transition active:scale-95" title="طباعة التقرير">
+                        <i data-lucide="printer" class="w-4 h-4"></i>
+                        <span class="hidden sm:inline">طباعة</span>
+                    </button>
+                    <button onclick="openTaskModal()" class="flex items-center gap-2 bg-brand-600 hover:bg-brand-500 text-white px-4 py-2.5 rounded-xl text-sm font-bold shadow-md shadow-brand-950/50 transition active:scale-95">
+                        <i data-lucide="plus-circle" class="w-4 h-4"></i>
+                        <span>إضافة مشروع / مهمة</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- ترويسة خاصة بالطباعة فقط -->
+    <div class="hidden print-only mb-6 border-b-2 border-slate-800 pb-4">
+        <div class="flex justify-between items-center">
+            <div>
+                <h1 class="text-2xl font-bold text-slate-900">تقرير ملخص العمل اليومي للمشاريع</h1>
+                <p class="text-sm text-slate-600 mt-1" id="print-filter-info">كافة السجلات والمشاريع الميدانية</p>
+            </div>
+            <div class="text-left text-sm text-slate-600">
+                <p>تاريخ الطباعة: <span id="print-date" class="font-bold"></span></p>
+                <p>إجمالي السجلات المعروضة: <span id="print-count" class="font-bold"></span></p>
+            </div>
+        </div>
+    </div>
+
+    <!-- المحتوى الرئيسي -->
+    <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6 print-container">
+
+        <!-- البطاقات الإحصائية السريعة -->
+        <section class="grid grid-cols-2 lg:grid-cols-4 gap-4 no-print">
+            <div class="bg-white rounded-2xl p-4 sm:p-5 border border-slate-200/80 shadow-sm flex items-center justify-between">
+                <div>
+                    <p class="text-xs sm:text-sm font-medium text-slate-500">إجمالي المهام المعروضة</p>
+                    <p id="stat-total" class="text-2xl sm:text-3xl font-extrabold text-slate-800 mt-1">0</p>
+                </div>
+                <div class="w-11 h-11 rounded-xl bg-brand-50 text-brand-600 flex items-center justify-center">
+                    <i data-lucide="layers" class="w-6 h-6"></i>
+                </div>
+            </div>
+
+            <div class="bg-white rounded-2xl p-4 sm:p-5 border border-slate-200/80 shadow-sm flex items-center justify-between">
+                <div>
+                    <p class="text-xs sm:text-sm font-medium text-slate-500">قيد المعاينة</p>
+                    <p id="stat-inspection" class="text-2xl sm:text-3xl font-extrabold text-amber-600 mt-1">0</p>
+                </div>
+                <div class="w-11 h-11 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center">
+                    <i data-lucide="search-check" class="w-6 h-6"></i>
+                </div>
+            </div>
+
+            <div class="bg-white rounded-2xl p-4 sm:p-5 border border-slate-200/80 shadow-sm flex items-center justify-between">
+                <div>
+                    <p class="text-xs sm:text-sm font-medium text-slate-500">جاري مباشرة العمل</p>
+                    <p id="stat-execution" class="text-2xl sm:text-3xl font-extrabold text-blue-600 mt-1">0</p>
+                </div>
+                <div class="w-11 h-11 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center">
+                    <i data-lucide="hard-hat" class="w-6 h-6"></i>
+                </div>
+            </div>
+
+            <div class="bg-white rounded-2xl p-4 sm:p-5 border border-slate-200/80 shadow-sm flex items-center justify-between">
+                <div>
+                    <p class="text-xs sm:text-sm font-medium text-slate-500">مكتمل</p>
+                    <p id="stat-completed" class="text-2xl sm:text-3xl font-extrabold text-emerald-600 mt-1">0</p>
+                </div>
+                <div class="w-11 h-11 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
+                    <i data-lucide="check-circle-2" class="w-6 h-6"></i>
+                </div>
+            </div>
+        </section>
+
+        <!-- شريط البحث والفلترة المتقدمة -->
+        <section class="bg-white rounded-2xl p-4 sm:p-5 border border-slate-200/80 shadow-sm space-y-4 no-print">
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 pb-3">
+                <div class="flex items-center gap-2 text-slate-700 font-bold text-sm">
+                    <i data-lucide="filter" class="w-4 h-4 text-brand-600"></i>
+                    <span>تصفية وبحث في جدول الأعمال</span>
+                </div>
+                <div class="flex items-center gap-2">
+                    <button onclick="setTodayFilter()" class="text-xs bg-brand-50 hover:bg-brand-100 text-brand-700 font-semibold px-3 py-1.5 rounded-lg transition">
+                        عرض مهام اليوم فقط
+                    </button>
+                    <button onclick="resetFilters()" class="text-xs bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold px-3 py-1.5 rounded-lg transition">
+                        إعادة ضبط الفلاتر
+                    </button>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+                <!-- البحث النصي العام -->
+                <div class="lg:col-span-2 relative">
+                    <i data-lucide="search" class="w-4 h-4 text-slate-400 absolute right-3.5 top-3"></i>
+                    <input type="text" id="filter-search" oninput="renderTasks()" placeholder="بحث باسم المشروع، الموقع، المكلف بالمعاينة أو التنفيذ..." class="w-full pr-10 pl-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:bg-white transition">
+                </div>
+
+                <!-- فلتر التاريخ -->
+                <div>
+                    <input type="date" id="filter-date" onchange="renderTasks()" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:bg-white transition" title="تصفية حسب التاريخ">
+                </div>
+
+                <!-- فلتر اليوم -->
+                <div>
+                    <select id="filter-day" onchange="renderTasks()" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:bg-white transition">
+                        <option value="">جميع الأيام</option>
+                        <option value="الأحد">الأحد</option>
+                        <option value="الاثنين">الاثنين</option>
+                        <option value="الثلاثاء">الثلاثاء</option>
+                        <option value="الأربعاء">الأربعاء</option>
+                        <option value="الخميس">الخميس</option>
+                        <option value="الجمعة">الجمعة</option>
+                        <option value="السبت">السبت</option>
+                    </select>
+                </div>
+
+                <!-- فلتر الحالة -->
+                <div>
+                    <select id="filter-status" onchange="renderTasks()" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:bg-white transition">
+                        <option value="">جميع الحالات</option>
+                        <option value="قيد المعاينة">قيد المعاينة</option>
+                        <option value="جاري مباشرة العمل">جاري مباشرة العمل</option>
+                        <option value="مكتمل">مكتمل</option>
+                        <option value="مؤجل">مؤجل</option>
+                    </select>
+                </div>
+            </div>
+        </section>
+
+        <!-- جدول عرض المشاريع والمهام اليومية -->
+        <section class="bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden">
+            <div class="overflow-x-auto">
+                <table class="w-full text-right border-collapse">
+                    <thead>
+                        <tr class="bg-slate-50/90 border-b border-slate-200 text-slate-600 text-xs font-bold uppercase">
+                            <th class="py-3.5 px-4 whitespace-nowrap">#</th>
+                            <th class="py-3.5 px-4">جهة العمل / المشروع</th>
+                            <th class="py-3.5 px-4 whitespace-nowrap">التاريخ واليوم</th>
+                            <th class="py-3.5 px-4 whitespace-nowrap">الفترة الزمنية</th>
+                            <th class="py-3.5 px-4">موقع المشروع</th>
+                            <th class="py-3.5 px-4">المكلف بالمعاينة</th>
+                            <th class="py-3.5 px-4">المكلف بمباشرة العمل</th>
+                            <th class="py-3.5 px-4 whitespace-nowrap">الحالة</th>
+                            <th class="py-3.5 px-4 text-center no-print">إجراءات</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tasks-table-body" class="divide-y divide-slate-100 text-sm">
+                        <!-- يتم تعبئة الصفوف ديناميكياً عبر JavaScript -->
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- رسالة عند عدم وجود بيانات -->
+            <div id="empty-state" class="hidden py-12 px-4 text-center">
+                <div class="w-16 h-16 bg-slate-100 text-slate-400 rounded-full flex items-center justify-center mx-auto mb-3">
+                    <i data-lucide="folder-open" class="w-8 h-8"></i>
+                </div>
+                <h3 class="text-base font-bold text-slate-700">لا توجد مهام أو مشاريع مطابقة</h3>
+                <p class="text-sm text-slate-500 mt-1 max-w-md mx-auto">يمكنك إضافة مهمة عمل جديدة بالضغط على زر "إضافة مشروع / مهمة" في الأعلى، أو إعادة ضبط الفلاتر.</p>
+            </div>
+        </section>
+
+        <!-- شريط إدارة البيانات التجريبية في الأسفل -->
+        <footer class="flex flex-col sm:flex-row items-center justify-between gap-4 pt-2 pb-8 text-xs text-slate-500 no-print">
+            <div class="flex items-center gap-2">
+                <i data-lucide="database" class="w-4 h-4 text-slate-400"></i>
+                <span>يتم حفظ جميع البيانات تلقائياً في متصفحك (Local Storage).</span>
+            </div>
+            <div class="flex items-center gap-3">
+                <button onclick="loadSampleData(true)" class="text-brand-600 hover:text-brand-700 font-semibold hover:underline flex items-center gap-1">
+                    <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i>
+                    <span>استعادة البيانات التجريبية</span>
+                </button>
+                <span>•</span>
+                <button onclick="confirmClearAll()" class="text-rose-600 hover:text-rose-700 font-semibold hover:underline flex items-center gap-1">
+                    <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+                    <span>مسح جميع السجلات</span>
+                </button>
+            </div>
+        </footer>
+    </main>
+
+    <!-- نافذة (Modal) إضافة / تعديل مهمة عمل -->
+    <div id="task-modal" class="fixed inset-0 z-50 hidden bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto no-print">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-2xl overflow-hidden my-8 border border-slate-200 animate-fade-in">
+            <!-- رأس النافذة -->
+            <div class="bg-slate-50 px-6 py-4 border-b border-slate-200 flex items-center justify-between">
+                <div class="flex items-center gap-2.5">
+                    <div class="w-9 h-9 rounded-xl bg-brand-100 text-brand-700 flex items-center justify-center">
+                        <i data-lucide="briefcase" class="w-5 h-5"></i>
+                    </div>
+                    <div>
+                        <h2 id="modal-title" class="text-lg font-bold text-slate-800">إضافة مشروع / مهمة عمل جديدة</h2>
+                        <p class="text-xs text-slate-500">أدخل تفاصيل المعاينة ومباشرة العمل والفترة الزمنية بدقة</p>
+                    </div>
+                </div>
+                <button onclick="closeTaskModal()" class="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-200/60 rounded-xl transition">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+            </div>
+
+            <!-- نموذج الإدخال -->
+            <form id="task-form" onsubmit="saveTask(event)" class="p-6 space-y-4">
+                <input type="hidden" id="task-id">
+
+                <!-- الصف 1: اسم المشروع / جهة العمل -->
+                <div>
+                    <label class="block text-sm font-bold text-slate-700 mb-1.5">
+                        اسم المشروع / جهة العمل <span class="text-rose-500">*</span>
+                    </label>
+                    <input type="text" id="field-project" required placeholder="مثال: شركة المراعي - صيانة المستودع الرئيسي / بلدية المنطقة" class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:bg-white transition">
+                </div>
+
+                <!-- الصف 2: التاريخ واستخراج اليوم تلقائياً -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-bold text-slate-700 mb-1.5">
+                            التاريخ <span class="text-rose-500">*</span>
+                        </label>
+                        <input type="date" id="field-date" required onchange="updateDayNameFromDate()" class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:bg-white transition">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-bold text-slate-700 mb-1.5">
+                            اليوم (يُحدد تلقائياً أو يدوياً)
+                        </label>
+                        <select id="field-day" class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-sm font-semibold text-brand-800 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:bg-white transition">
+                            <option value="الأحد">الأحد</option>
+                            <option value="الاثنين">الاثنين</option>
+                            <option value="الثلاثاء">الثلاثاء</option>
+                            <option value="الأربعاء">الأربعاء</option>
+                            <option value="الخميس">الخميس</option>
+                            <option value="الجمعة">الجمعة</option>
+                            <option value="السبت">السبت</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- الصف 3: موقع المشروع + رابط خرائط جوجل -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-bold text-slate-700 mb-1.5">
+                            موقع المشروع (الحي / المدينة / الوصف) <span class="text-rose-500">*</span>
+                        </label>
+                        <input type="text" id="field-location" required placeholder="مثال: المنطقة الصناعية الثانية - بوابة 4" class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:bg-white transition">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-bold text-slate-700 mb-1.5">
+                            رابط خرائط جوجل (Google Maps) <span class="text-xs font-normal text-slate-400">(اختياري)</span>
+                        </label>
+                        <input type="url" id="field-map-url" placeholder="https://maps.google.com/..." dir="ltr" class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-sm text-left focus:outline-none focus:ring-2 focus:ring-brand-500 focus:bg-white transition">
+                    </div>
+                </div>
+
+                <!-- الصف 4: الشخص المرسل للمعاينة والشخص المرسل لمباشرة العمل -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 bg-slate-50/80 p-3.5 rounded-xl border border-slate-200/80">
+                    <div>
+                        <label class="flex items-center gap-1.5 text-sm font-bold text-amber-800 mb-1.5">
+                            <i data-lucide="search-check" class="w-4 h-4 text-amber-600"></i>
+                            <span>الشخص المرسل للمعاينة</span>
+                        </label>
+                        <input type="text" id="field-inspector" placeholder="مثال: م. أحمد العتيبي (أو لا يوجد)" class="w-full px-3.5 py-2 bg-white border border-slate-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 transition">
+                    </div>
+                    <div>
+                        <label class="flex items-center gap-1.5 text-sm font-bold text-blue-800 mb-1.5">
+                            <i data-lucide="hard-hat" class="w-4 h-4 text-blue-600"></i>
+                            <span>الشخص المرسل لمباشرة العمل</span>
+                        </label>
+                        <input type="text" id="field-executor" placeholder="مثال: م. خالد الدوسري / فرقة الصيانة" class="w-full px-3.5 py-2 bg-white border border-slate-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition">
+                    </div>
+                </div>
+
+                <!-- الصف 5: تحديد الفترة الزمنية -->
+                <div class="bg-brand-50/40 p-3.5 rounded-xl border border-brand-100 space-y-3">
+                    <div class="flex items-center justify-between">
+                        <label class="flex items-center gap-1.5 text-sm font-bold text-slate-800">
+                            <i data-lucide="clock" class="w-4 h-4 text-brand-600"></i>
+                            <span>تحديد الفترة الزمنية</span>
+                        </label>
+                        <span id="duration-badge" class="text-xs font-bold bg-brand-100 text-brand-800 px-2.5 py-1 rounded-lg">المدة: 4 ساعات</span>
+                    </div>
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-600 mb-1">نوع الفترة</label>
+                            <select id="field-shift" onchange="applyShiftPreset()" class="w-full px-3 py-2 bg-white border border-slate-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-500">
+                                <option value="الفترة الصباحية">الفترة الصباحية</option>
+                                <option value="الفترة المسائية">الفترة المسائية</option>
+                                <option value="فترة كاملة / مخصصة">فترة كاملة / مخصصة</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-600 mb-1">من الساعة</label>
+                            <input type="time" id="field-time-from" value="08:00" onchange="calculateDuration()" required class="w-full px-3 py-2 bg-white border border-slate-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-500">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-600 mb-1">إلى الساعة</label>
+                            <input type="time" id="field-time-to" value="12:00" onchange="calculateDuration()" required class="w-full px-3 py-2 bg-white border border-slate-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-500">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- الصف 6: الحالة والملاحظات -->
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <div>
+                        <label class="block text-sm font-bold text-slate-700 mb-1.5">حالة المهمة</label>
+                        <select id="field-status" class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-brand-500 focus:bg-white transition">
+                            <option value="قيد المعاينة">قيد المعاينة</option>
+                            <option value="جاري مباشرة العمل">جاري مباشرة العمل</option>
+                            <option value="مكتمل">مكتمل</option>
+                            <option value="مؤجل">مؤجل</option>
+                        </select>
+                    </div>
+                    <div class="sm:col-span-2">
+                        <label class="block text-sm font-bold text-slate-700 mb-1.5">ملاحظات إضافية <span class="text-xs font-normal text-slate-400">(اختياري)</span></label>
+                        <input type="text" id="field-notes" placeholder="أي تعليمات خاصة، رقم تصريح الدخول، أو متطلبات المعدات..." class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:bg-white transition">
+                    </div>
+                </div>
+
+                <!-- أزرار الحفظ والإلغاء -->
+                <div class="flex items-center justify-end gap-3 pt-4 border-t border-slate-200">
+                    <button type="button" onclick="closeTaskModal()" class="px-5 py-2.5 rounded-xl text-sm font-semibold text-slate-600 bg-slate-100 hover:bg-slate-200 transition">
+                        إلغاء
+                    </button>
+                    <button type="submit" class="px-6 py-2.5 rounded-xl text-sm font-bold text-white bg-brand-600 hover:bg-brand-700 shadow-md shadow-brand-600/20 transition flex items-center gap-2">
+                        <i data-lucide="save" class="w-4 h-4"></i>
+                        <span>حفظ البيانات</span>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- نافذة (Modal) ملخص العمل اليومي الجاهز للنسخ والمشاركة -->
+    <div id="summary-modal" class="fixed inset-0 z-50 hidden bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto no-print">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-2xl overflow-hidden my-8 border border-slate-200">
+            <div class="bg-emerald-600 text-white px-6 py-4 flex items-center justify-between">
+                <div class="flex items-center gap-2.5">
+                    <i data-lucide="share-2" class="w-5 h-5"></i>
+                    <div>
+                        <h2 class="text-lg font-bold">ملخص العمل اليومي الجاهز للمشاركة</h2>
+                        <p class="text-xs text-emerald-100">نص منسق وجاهز للإرسال عبر واتساب أو البريد الإلكتروني</p>
+                    </div>
+                </div>
+                <button onclick="closeSummaryModal()" class="p-2 text-emerald-100 hover:text-white hover:bg-emerald-700 rounded-xl transition">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+            </div>
+
+            <div class="p-6 space-y-4">
+                <!-- خيارات توليد الملخص -->
+                <div class="flex flex-wrap items-center justify-between gap-2 bg-slate-50 p-3 rounded-xl border border-slate-200">
+                    <span class="text-xs font-bold text-slate-600">نطاق التقرير:</span>
+                    <div class="flex items-center gap-2">
+                        <button onclick="generateSummaryText('filtered')" id="btn-sum-filtered" class="px-3 py-1.5 rounded-lg text-xs font-bold bg-emerald-600 text-white transition">
+                            المهام المعروضة حالياً
+                        </button>
+                        <button onclick="generateSummaryText('today')" id="btn-sum-today" class="px-3 py-1.5 rounded-lg text-xs font-bold bg-white text-slate-700 border border-slate-300 hover:bg-slate-100 transition">
+                            مهام اليوم فقط
+                        </button>
+                        <button onclick="generateSummaryText('all')" id="btn-sum-all" class="px-3 py-1.5 rounded-lg text-xs font-bold bg-white text-slate-700 border border-slate-300 hover:bg-slate-100 transition">
+                            جميع المهام
+                        </button>
+                    </div>
+                </div>
+
+                <!-- مربع النص المنسق -->
+                <div>
+                    <textarea id="summary-textarea" rows="13" readonly class="w-full p-4 bg-slate-50 border border-slate-300 rounded-xl text-sm leading-relaxed text-slate-800 font-medium focus:outline-none focus:ring-2 focus:ring-emerald-500"></textarea>
+                </div>
+
+                <!-- أزرار النسخ والمشاركة -->
+                <div class="flex flex-wrap items-center justify-between gap-3 pt-2">
+                    <a id="whatsapp-share-link" href="#" target="_blank" rel="noopener noreferrer" class="flex items-center gap-2 bg-[#25D366] hover:bg-[#20bd5a] text-white px-5 py-2.5 rounded-xl text-sm font-bold shadow-sm transition">
+                        <i data-lucide="message-circle" class="w-4 h-4"></i>
+                        <span>إرسال مباشرة عبر واتساب</span>
+                    </a>
+
+                    <div class="flex items-center gap-2">
+                        <button onclick="closeSummaryModal()" class="px-4 py-2.5 rounded-xl text-sm font-semibold text-slate-600 bg-slate-100 hover:bg-slate-200 transition">
+                            إغلاق
+                        </button>
+                        <button onclick="copySummaryToClipboard()" class="flex items-center gap-2 bg-slate-900 hover:bg-slate-800 text-white px-5 py-2.5 rounded-xl text-sm font-bold shadow-md transition">
+                            <i data-lucide="copy" class="w-4 h-4"></i>
+                            <span>نسخ الملخص</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- نافذة تأكيد الحذف (بدلاً من confirm) -->
+    <div id="confirm-modal" class="fixed inset-0 z-50 hidden bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 no-print">
+        <div class="bg-white rounded-2xl shadow-xl w-full max-w-md p-6 border border-slate-200 text-center space-y-4">
+            <div class="w-12 h-12 rounded-full bg-rose-100 text-rose-600 flex items-center justify-center mx-auto">
+                <i data-lucide="alert-triangle" class="w-6 h-6"></i>
+            </div>
+            <div>
+                <h3 id="confirm-title" class="text-lg font-bold text-slate-800">تأكيد الحذف</h3>
+                <p id="confirm-message" class="text-sm text-slate-500 mt-1">هل أنت متأكد من رغبتك في تنفيذ هذا الإجراء؟</p>
+            </div>
+            <div class="flex items-center justify-center gap-3 pt-2">
+                <button onclick="closeConfirmModal()" class="px-5 py-2 rounded-xl text-sm font-semibold text-slate-600 bg-slate-100 hover:bg-slate-200 transition">
+                    تراجع
+                </button>
+                <button id="confirm-action-btn" class="px-5 py-2 rounded-xl text-sm font-bold text-white bg-rose-600 hover:bg-rose-700 transition">
+                    نعم، احذف
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ==========================================
+        // 1. إدارة الحالة والبيانات (State & Storage)
+        // ==========================================
+        const STORAGE_KEY = 'daily_work_summary_tasks_v1';
+        const ARABIC_DAYS = ['الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'];
+
+        let tasks = [];
+        let currentlyDisplayedTasks = [];
+
+        // الحصول على تاريخ اليوم بصيغة YYYY-MM-DD بالتوقيت المحلي
+        function getTodayISO() {
+            const now = new Date();
+            const offset = now.getTimezoneOffset();
+            const localDate = new Date(now.getTime() - (offset * 60 * 1000));
+            return localDate.toISOString().split('T')[0];
+        }
+
+        // الحصول على تاريخ غد أو أمس نسبياً
+        function getRelativeDateISO(daysOffset) {
+            const now = new Date();
+            now.setDate(now.getDate() + daysOffset);
+            const offset = now.getTimezoneOffset();
+            const localDate = new Date(now.getTime() - (offset * 60 * 1000));
+            return localDate.toISOString().split('T')[0];
+        }
+
+        // استخراج اسم اليوم باللغة العربية من التاريخ
+        function getArabicDayName(dateString) {
+            if (!dateString) return '';
+            const [year, month, day] = dateString.split('-').map(Number);
+            const dateObj = new Date(year, month - 1, day);
+            return ARABIC_DAYS[dateObj.getDay()];
+        }
+
+        // بيانات تجريبية واقعية عند التشغيل لأول مرة
+        function getInitialSampleData() {
+            const today = getTodayISO();
+            const tomorrow = getRelativeDateISO(1);
+            const yesterday = getRelativeDateISO(-1);
+
+            return [
+                {
+                    id: 'task-' + Date.now() + '-1',
+                    project: 'مجموعة شركات العليان - تطوير المبنى الإداري',
+                    date: today,
+                    day: getArabicDayName(today),
+                    location: 'الحي الدبلوماسي - مبنى رقم 14',
+                    mapUrl: 'https://maps.google.com',
+                    inspector: 'م. طارق المنصور',
+                    executor: 'م. سامي الحربي (فرقة التركيبات)',
+                    shift: 'الفترة الصباحية',
+                    timeFrom: '08:00',
+                    timeTo: '12:30',
+                    status: 'جاري مباشرة العمل',
+                    notes: 'تم استلام تصاريح الدخول ومباشرة أعمال التمديدات الكهربائية.'
+                },
+                {
+                    id: 'task-' + Date.now() + '-2',
+                    project: 'أمانة المنطقة - مشروع صيانة الحدائق والممرات',
+                    date: today,
+                    day: getArabicDayName(today),
+                    location: 'حي الياسمين - تقاطع طريق الملك عبدالعزيز',
+                    mapUrl: 'https://maps.google.com',
+                    inspector: 'م. عبدالله الشهري',
+                    executor: 'لم يحدد بعد (بانتظار تقرير المعاينة)',
+                    shift: 'الفترة المسائية',
+                    timeFrom: '16:00',
+                    timeTo: '19:30',
+                    status: 'قيد المعاينة',
+                    notes: 'معاينة نقاط الإنارة ورفع المقاسات المطلوبة قبل التوريد.'
+                },
+                {
+                    id: 'task-' + Date.now() + '-3',
+                    project: 'مستشفى المملكة التخصصي - توسعة العيادات',
+                    date: tomorrow,
+                    day: getArabicDayName(tomorrow),
+                    location: 'طريق الثمامة - البوابة الشمالية',
+                    mapUrl: '',
+                    inspector: 'م. طارق المنصور',
+                    executor: 'م. فهد القحطاني',
+                    shift: 'الفترة الصباحية',
+                    timeFrom: '09:00',
+                    timeTo: '14:00',
+                    status: 'قيد المعاينة',
+                    notes: 'اجتماع تنسيقي مع استشاري المشروع في الموقع.'
+                },
+                {
+                    id: 'task-' + Date.now() + '-4',
+                    project: 'شركة الخدمات اللوجستية المتكاملة',
+                    date: yesterday,
+                    day: getArabicDayName(yesterday),
+                    location: 'المدينة الصناعية الثالثة - مستودع B2',
+                    mapUrl: 'https://maps.google.com',
+                    inspector: 'م. عبدالله الشهري',
+                    executor: 'م. سامي الحربي',
+                    shift: 'فترة كاملة / مخصصة',
+                    timeFrom: '08:30',
+                    timeTo: '16:30',
+                    status: 'مكتمل',
+                    notes: 'تم الانتهاء من التركيب والاختبار وتوقيع محضر الاستلام.'
+                }
+            ];
+        }
+
+        // تحميل البيانات من المتصفح
+        function loadTasksFromStorage() {
+            const raw = localStorage.getItem(STORAGE_KEY);
+            if (raw === null) {
+                // أول زيارة للمستخدم: تحميل البيانات التجريبية
+                tasks = getInitialSampleData();
+                saveTasksToStorage();
+            } else {
+                try {
+                    tasks = JSON.parse(raw) || [];
+                } catch (e) {
+                    tasks = [];
+                }
+            }
+        }
+
+        // حفظ البيانات في المتصفح
+        function saveTasksToStorage() {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(tasks));
+        }
+
+        // استعادة البيانات التجريبية يدوياً
+        function loadSampleData(notify = false) {
+            tasks = getInitialSampleData();
+            saveTasksToStorage();
+            resetFilters();
+            if (notify) {
+                showToast('تمت استعادة البيانات التجريبية بنجاح', 'success');
+            }
+        }
+
+        // ==========================================
+        // 2. تنسيق الوقت وحساب المدة
+        // ==========================================
+        function formatTime12Hour(time24) {
+            if (!time24) return '';
+            const [hourStr, minute] = time24.split(':');
+            let hour = parseInt(hourStr, 10);
+            const period = hour >= 12 ? 'م' : 'ص';
+            hour = hour % 12;
+            if (hour === 0) hour = 12;
+            return `${hour}:${minute} ${period}`;
+        }
+
+        function computeDurationText(timeFrom, timeTo) {
+            if (!timeFrom || !timeTo) return '';
+            const [h1, m1] = timeFrom.split(':').map(Number);
+            const [h2, m2] = timeTo.split(':').map(Number);
+            let diffMinutes = (h2 * 60 + m2) - (h1 * 60 + m1);
+            if (diffMinutes <= 0) {
+                diffMinutes += 24 * 60; // في حال امتداد العمل لما بعد منتصف الليل
+            }
+            const hours = Math.floor(diffMinutes / 60);
+            const mins = diffMinutes % 60;
+            if (hours > 0 && mins > 0) return `${hours} ساعة و ${mins} دقيقة`;
+            if (hours > 0) return `${hours} ${hours === 1 ? 'ساعة' : (hours === 2 ? 'ساعتان' : (hours <= 10 ? 'ساعات' : 'ساعة'))}`;
+            return `${mins} دقيقة`;
+        }
+
+        function calculateDuration() {
+            const from = document.getElementById('field-time-from').value;
+            const to = document.getElementById('field-time-to').value;
+            const badge = document.getElementById('duration-badge');
+            const text = computeDurationText(from, to);
+            badge.textContent = text ? `المدة: ${text}` : 'حدد الوقت';
+        }
+
+        function applyShiftPreset() {
+            const shift = document.getElementById('field-shift').value;
+            const fromInput = document.getElementById('field-time-from');
+            const toInput = document.getElementById('field-time-to');
+
+            if (shift === 'الفترة الصباحية') {
+                fromInput.value = '08:00';
+                toInput.value = '12:00';
+            } else if (shift === 'الفترة المسائية') {
+                fromInput.value = '16:00';
+                toInput.value = '20:00';
+            } else {
+                fromInput.value = '08:00';
+                toInput.value = '16:00';
+            }
+            calculateDuration();
+        }
+
+        function updateDayNameFromDate() {
+            const dateVal = document.getElementById('field-date').value;
+            if (dateVal) {
+                const dayName = getArabicDayName(dateVal);
+                document.getElementById('field-day').value = dayName;
+            }
+        }
+
+        // ==========================================
+        // 3. عرض الجدول والإحصائيات والفلترة
+        // ==========================================
+        function getStatusBadgeHTML(status) {
+            const styles = {
+                'قيد المعاينة': 'bg-amber-50 text-amber-700 border-amber-200',
+                'جاري مباشرة العمل': 'bg-blue-50 text-blue-700 border-blue-200',
+                'مكتمل': 'bg-emerald-50 text-emerald-700 border-emerald-200',
+                'مؤجل': 'bg-rose-50 text-rose-700 border-rose-200'
+            };
+            const dotColors = {
+                'قيد المعاينة': 'bg-amber-500',
+                'جاري مباشرة العمل': 'bg-blue-500',
+                'مكتمل': 'bg-emerald-500',
+                'مؤجل': 'bg-rose-500'
+            };
+            const cls = styles[status] || 'bg-slate-100 text-slate-700 border-slate-200';
+            const dot = dotColors[status] || 'bg-slate-500';
+
+            return `
+                <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold border ${cls} badge-print">
+                    <span class="w-1.5 h-1.5 rounded-full ${dot} no-print"></span>
+                    ${escapeHTML(status)}
+                </span>
+            `;
+        }
+
+        function renderTasks() {
+            const searchQuery = document.getElementById('filter-search').value.trim().toLowerCase();
+            const filterDate = document.getElementById('filter-date').value;
+            const filterDay = document.getElementById('filter-day').value;
+            const filterStatus = document.getElementById('filter-status').value;
+
+            // تصفية المهام
+            const filtered = tasks.filter(task => {
+                const matchDate = !filterDate || task.date === filterDate;
+                const matchDay = !filterDay || task.day === filterDay;
+                const matchStatus = !filterStatus || task.status === filterStatus;
+
+                const searchableText = [
+                    task.project,
+                    task.location,
+                    task.inspector,
+                    task.executor,
+                    task.notes,
+                    task.shift
+                ].join(' ').toLowerCase();
+
+                const matchSearch = !searchQuery || searchableText.includes(searchQuery);
+                return matchDate && matchDay && matchStatus && matchSearch;
+            });
+
+            // ترتيب المهام حسب التاريخ ثم وقت البدء
+            filtered.sort((a, b) => {
+                if (a.date !== b.date) return b.date.localeCompare(a.date); // الأحدث أولاً
+                return (a.timeFrom || '').localeCompare(b.timeFrom || '');
+            });
+
+            currentlyDisplayedTasks = filtered;
+
+            // تحديث البطاقات الإحصائية بناءً على النتائج المعروضة
+            document.getElementById('stat-total').textContent = filtered.length;
+            document.getElementById('stat-inspection').textContent = filtered.filter(t => t.status === 'قيد المعاينة').length;
+            document.getElementById('stat-execution').textContent = filtered.filter(t => t.status === 'جاري مباشرة العمل').length;
+            document.getElementById('stat-completed').textContent = filtered.filter(t => t.status === 'مكتمل').length;
+
+            // تحديث معلومات الطباعة
+            document.getElementById('print-date').textContent = new Date().toLocaleDateString('ar-SA', { year: 'numeric', month: 'long', day: 'numeric' });
+            document.getElementById('print-count').textContent = filtered.length;
+            const filterNotes = [];
+            if (filterDate) filterNotes.push(`التاريخ: ${filterDate}`);
+            if (filterDay) filterNotes.push(`اليوم: ${filterDay}`);
+            if (filterStatus) filterNotes.push(`الحالة: ${filterStatus}`);
+            document.getElementById('print-filter-info').textContent = filterNotes.length ? `تصفية حسب (${filterNotes.join(' | ')})` : 'جميع المشاريع والمهام المسجلة';
+
+            const tbody = document.getElementById('tasks-table-body');
+            const emptyState = document.getElementById('empty-state');
+
+            if (filtered.length === 0) {
+                tbody.innerHTML = '';
+                emptyState.classList.remove('hidden');
+                return;
+            }
+
+            emptyState.classList.add('hidden');
+            tbody.innerHTML = filtered.map((task, index) => {
+                const duration = computeDurationText(task.timeFrom, task.timeTo);
+                const mapLinkHtml = task.mapUrl
+                    ? `<a href="${escapeHTML(task.mapUrl)}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1 text-xs font-semibold text-brand-600 hover:text-brand-800 hover:underline mt-1 no-print">
+                            <i data-lucide="map-pin" class="w-3.5 h-3.5"></i>
+                            <span>فتح الموقع على الخريطة</span>
+                       </a>`
+                    : '';
+
+                const notesHtml = task.notes
+                    ? `<p class="text-xs text-slate-500 mt-1 flex items-start gap-1">
+                            <i data-lucide="info" class="w-3.5 h-3.5 text-slate-400 shrink-0 mt-0.5 no-print"></i>
+                            <span>${escapeHTML(task.notes)}</span>
+                       </p>`
+                    : '';
+
+                return `
+                    <tr class="hover:bg-slate-50/90 transition group">
+                        <td class="py-3.5 px-4 font-bold text-slate-400 text-xs">${index + 1}</td>
+                        <td class="py-3.5 px-4 max-w-xs">
+                            <div class="font-bold text-slate-800">${escapeHTML(task.project)}</div>
+                            ${notesHtml}
+                        </td>
+                        <td class="py-3.5 px-4 whitespace-nowrap">
+                            <div class="font-bold text-slate-800">${escapeHTML(task.day)}</div>
+                            <div class="text-xs text-slate-500 font-mono" dir="ltr">${escapeHTML(task.date)}</div>
+                        </td>
+                        <td class="py-3.5 px-4 whitespace-nowrap">
+                            <div class="text-xs font-bold text-brand-700">${escapeHTML(task.shift || '')}</div>
+                            <div class="text-xs font-semibold text-slate-700 mt-0.5">
+                                من ${formatTime12Hour(task.timeFrom)} إلى ${formatTime12Hour(task.timeTo)}
+                            </div>
+                            <div class="text-[11px] text-slate-400 mt-0.5">(${duration})</div>
+                        </td>
+                        <td class="py-3.5 px-4 max-w-[200px]">
+                            <div class="text-slate-700 font-medium text-xs leading-relaxed">${escapeHTML(task.location)}</div>
+                            ${mapLinkHtml}
+                        </td>
+                        <td class="py-3.5 px-4">
+                            <div class="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-700 bg-amber-50/70 px-2.5 py-1 rounded-lg border border-amber-100">
+                                <i data-lucide="user-check" class="w-3.5 h-3.5 text-amber-600 no-print"></i>
+                                <span>${escapeHTML(task.inspector || 'غير محدد')}</span>
+                            </div>
+                        </td>
+                        <td class="py-3.5 px-4">
+                            <div class="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-700 bg-blue-50/70 px-2.5 py-1 rounded-lg border border-blue-100">
+                                <i data-lucide="hard-hat" class="w-3.5 h-3.5 text-blue-600 no-print"></i>
+                                <span>${escapeHTML(task.executor || 'غير محدد')}</span>
+                            </div>
+                        </td>
+                        <td class="py-3.5 px-4 whitespace-nowrap">
+                            ${getStatusBadgeHTML(task.status)}
+                        </td>
+                        <td class="py-3.5 px-4 text-center whitespace-nowrap no-print">
+                            <div class="inline-flex items-center gap-1">
+                                <button onclick="editTask('${task.id}')" class="p-2 text-slate-500 hover:text-brand-600 hover:bg-brand-50 rounded-lg transition" title="تعديل">
+                                    <i data-lucide="edit-3" class="w-4 h-4"></i>
+                                </button>
+                                <button onclick="confirmDeleteTask('${task.id}')" class="p-2 text-slate-500 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition" title="حذف">
+                                    <i data-lucide="trash-2" class="w-4 h-4"></i>
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+
+            // إعادة تفعيل الأيقونات الجديدة في الجدول
+            lucide.createIcons();
+        }
+
+        // الفلاتر السريعة
+        function setTodayFilter() {
+            document.getElementById('filter-date').value = getTodayISO();
+            document.getElementById('filter-day').value = '';
+            renderTasks();
+            showToast('تم عرض مهام اليوم فقط', 'info');
+        }
+
+        function resetFilters() {
+            document.getElementById('filter-search').value = '';
+            document.getElementById('filter-date').value = '';
+            document.getElementById('filter-day').value = '';
+            document.getElementById('filter-status').value = '';
+            renderTasks();
+        }
+
+        // ==========================================
+        // 4. إضافة وتعديل وحذف المهام (CRUD)
+        // ==========================================
+        function openTaskModal(taskToEdit = null) {
+            const modal = document.getElementById('task-modal');
+            const form = document.getElementById('task-form');
+            const title = document.getElementById('modal-title');
+
+            form.reset();
+
+            if (taskToEdit) {
+                title.textContent = 'تعديل بيانات المشروع / المهمة';
+                document.getElementById('task-id').value = taskToEdit.id;
+                document.getElementById('field-project').value = taskToEdit.project;
+                document.getElementById('field-date').value = taskToEdit.date;
+                document.getElementById('field-day').value = taskToEdit.day;
+                document.getElementById('field-location').value = taskToEdit.location;
+                document.getElementById('field-map-url').value = taskToEdit.mapUrl || '';
+                document.getElementById('field-inspector').value = taskToEdit.inspector || '';
+                document.getElementById('field-executor').value = taskToEdit.executor || '';
+                document.getElementById('field-shift').value = taskToEdit.shift || 'الفترة الصباحية';
+                document.getElementById('field-time-from').value = taskToEdit.timeFrom || '08:00';
+                document.getElementById('field-time-to').value = taskToEdit.timeTo || '12:00';
+                document.getElementById('field-status').value = taskToEdit.status || 'قيد المعاينة';
+                document.getElementById('field-notes').value = taskToEdit.notes || '';
+            } else {
+                title.textContent = 'إضافة مشروع / مهمة عمل جديدة';
+                document.getElementById('task-id').value = '';
+                const today = getTodayISO();
+                document.getElementById('field-date').value = today;
+                document.getElementById('field-day').value = getArabicDayName(today);
+                document.getElementById('field-shift').value = 'الفترة الصباحية';
+                document.getElementById('field-time-from').value = '08:00';
+                document.getElementById('field-time-to').value = '12:00';
+                document.getElementById('field-status').value = 'قيد المعاينة';
+            }
+
+            calculateDuration();
+            modal.classList.remove('hidden');
+            lucide.createIcons();
+        }
+
+        function closeTaskModal() {
+            document.getElementById('task-modal').classList.add('hidden');
+        }
+
+        function saveTask(event) {
+            event.preventDefault();
+
+            const id = document.getElementById('task-id').value;
+            const taskData = {
+                id: id || ('task-' + Date.now()),
+                project: document.getElementById('field-project').value.trim(),
+                date: document.getElementById('field-date').value,
+                day: document.getElementById('field-day').value,
+                location: document.getElementById('field-location').value.trim(),
+                mapUrl: document.getElementById('field-map-url').value.trim(),
+                inspector: document.getElementById('field-inspector').value.trim() || 'غير محدد',
+                executor: document.getElementById('field-executor').value.trim() || 'غير محدد',
+                shift: document.getElementById('field-shift').value,
+                timeFrom: document.getElementById('field-time-from').value,
+                timeTo: document.getElementById('field-time-to').value,
+                status: document.getElementById('field-status').value,
+                notes: document.getElementById('field-notes').value.trim()
+            };
+
+            if (id) {
+                const index = tasks.findIndex(t => t.id === id);
+                if (index !== -1) {
+                    tasks[index] = taskData;
+                    showToast('تم تحديث بيانات المشروع بنجاح', 'success');
+                }
+            } else {
+                tasks.unshift(taskData);
+                showToast('تمت إضافة المشروع إلى جدول الأعمال بنجاح', 'success');
+            }
+
+            saveTasksToStorage();
+            closeTaskModal();
+            renderTasks();
+        }
+
+        function editTask(id) {
+            const task = tasks.find(t => t.id === id);
+            if (task) {
+                openTaskModal(task);
+            }
+        }
+
+        // نافذة تأكيد الحذف المخصصة
+        let pendingConfirmCallback = null;
+
+        function openConfirmModal(title, message, onConfirm) {
+            document.getElementById('confirm-title').textContent = title;
+            document.getElementById('confirm-message').textContent = message;
+            pendingConfirmCallback = onConfirm;
+            document.getElementById('confirm-modal').classList.remove('hidden');
+        }
+
+        function closeConfirmModal() {
+            document.getElementById('confirm-modal').classList.add('hidden');
+            pendingConfirmCallback = null;
+        }
+
+        document.getElementById('confirm-action-btn').addEventListener('click', () => {
+            if (pendingConfirmCallback) pendingConfirmCallback();
+            closeConfirmModal();
+        });
+
+        function confirmDeleteTask(id) {
+            openConfirmModal(
+                'حذف سجل المشروع',
+                'هل أنت متأكد من رغبتك في حذف هذه المهمة نهائياً من جدول الأعمال؟',
+                () => {
+                    tasks = tasks.filter(t => t.id !== id);
+                    saveTasksToStorage();
+                    renderTasks();
+                    showToast('تم حذف السجل بنجاح', 'info');
+                }
+            );
+        }
+
+        function confirmClearAll() {
+            openConfirmModal(
+                'مسح جميع السجلات',
+                'سيتم حذف كافة المشاريع والمهام المحفوظة في المتصفح. هل تود المتابعة؟',
+                () => {
+                    tasks = [];
+                    saveTasksToStorage();
+                    renderTasks();
+                    showToast('تم مسح جميع السجلات', 'info');
+                }
+            );
+        }
+
+        // ==========================================
+        // 5. توليد ملخص العمل اليومي للنسخ والمشاركة
+        // ==========================================
+        function openSummaryModal() {
+            generateSummaryText('filtered');
+            document.getElementById('summary-modal').classList.remove('hidden');
+            lucide.createIcons();
+        }
+
+        function closeSummaryModal() {
+            document.getElementById('summary-modal').classList.add('hidden');
+        }
+
+        function generateSummaryText(scope) {
+            // تحديث أزرار التبديل
+            const scopes = ['filtered', 'today', 'all'];
+            scopes.forEach(s => {
+                const btn = document.getElementById(`btn-sum-${s}`);
+                if (s === scope) {
+                    btn.className = 'px-3 py-1.5 rounded-lg text-xs font-bold bg-emerald-600 text-white transition';
+                } else {
+                    btn.className = 'px-3 py-1.5 rounded-lg text-xs font-bold bg-white text-slate-700 border border-slate-300 hover:bg-slate-100 transition';
+                }
+            });
+
+            let targetTasks = [];
+            let scopeLabel = '';
+            const today = getTodayISO();
+
+            if (scope === 'today') {
+                targetTasks = tasks.filter(t => t.date === today);
+                scopeLabel = `ليوم ${getArabicDayName(today)} الموافق ${today}`;
+            } else if (scope === 'all') {
+                targetTasks = [...tasks];
+                scopeLabel = 'الشامل لجميع المشاريع المسجلة';
+            } else {
+                targetTasks = [...currentlyDisplayedTasks];
+                scopeLabel = 'حسب التصفية الحالية';
+            }
+
+            if (targetTasks.length === 0) {
+                document.getElementById('summary-textarea').value = 'لا توجد مهام أو مشاريع مسجلة ضمن هذا النطاق حالياً.';
+                document.getElementById('whatsapp-share-link').href = '#';
+                return;
+            }
+
+            let lines = [];
+            lines.push(`📋 *ملخص جدول العمل اليومي للمشاريع*`);
+            lines.push(`🗓️ النطاق: ${scopeLabel}`);
+            lines.push(`📊 إجمالي المهام: ${targetTasks.length}`);
+            lines.push(`━━━━━━━━━━━━━━━━━━━━`);
+
+            targetTasks.forEach((t, idx) => {
+                lines.push(`\n*${idx + 1}. جهة العمل / المشروع:* ${t.project}`);
+                lines.push(`📅 *اليوم والتاريخ:* ${t.day} (${t.date})`);
+                lines.push(`⏰ *الفترة الزمنية:* ${t.shift} | من ${formatTime12Hour(t.timeFrom)} إلى ${formatTime12Hour(t.timeTo)}`);
+                lines.push(`📍 *موقع المشروع:* ${t.location}${t.mapUrl ? ` (${t.mapUrl})` : ''}`);
+                lines.push(`🔍 *المكلف بالمعاينة:* ${t.inspector}`);
+                lines.push(`👷 *المكلف بمباشرة العمل:* ${t.executor}`);
+                lines.push(`📌 *الحالة:* ${t.status}`);
+                if (t.notes) {
+                    lines.push(`📝 *ملاحظات:* ${t.notes}`);
+                }
+                lines.push(`────────────────────`);
+            });
+
+            const fullText = lines.join('\n');
+            document.getElementById('summary-textarea').value = fullText;
+
+            // تحديث رابط المشاركة المباشر عبر واتساب
+            const waUrl = `https://wa.me/?text=${encodeURIComponent(fullText)}`;
+            document.getElementById('whatsapp-share-link').href = waUrl;
+        }
+
+        // نسخ الملخص باستخدام document.execCommand لضمان التوافق التام داخل iFrame
+        function copySummaryToClipboard() {
+            const textarea = document.getElementById('summary-textarea');
+            textarea.select();
+            textarea.setSelectionRange(0, 99999);
+            try {
+                const successful = document.execCommand('copy');
+                if (successful) {
+                    showToast('تم نسخ ملخص العمل اليومي إلى الحافظة بنجاح!', 'success');
+                } else {
+                    showToast('تعذر النسخ تلقائياً، يرجى النسخ يدوياً', 'error');
+                }
+            } catch (err) {
+                showToast('حدث خطأ أثناء النسخ', 'error');
+            }
+            window.getSelection().removeAllRanges();
+        }
+
+        // ==========================================
+        // 6. التصدير إلى ملف CSV / Excel
+        // ==========================================
+        function exportToCSV() {
+            if (currentlyDisplayedTasks.length === 0) {
+                showToast('لا توجد بيانات لتصديرها حالياً', 'error');
+                return;
+            }
+
+            const headers = [
+                'م',
+                'جهة العمل / المشروع',
+                'التاريخ',
+                'اليوم',
+                'نوع الفترة',
+                'من الساعة',
+                'إلى الساعة',
+                'المدة',
+                'موقع المشروع',
+                'رابط الخريطة',
+                'الشخص المرسل للمعاينة',
+                'الشخص المرسل لمباشرة العمل',
+                'الحالة',
+                'ملاحظات'
+            ];
+
+            const rows = currentlyDisplayedTasks.map((t, index) => [
+                index + 1,
+                t.project,
+                t.date,
+                t.day,
+                t.shift,
+                formatTime12Hour(t.timeFrom),
+                formatTime12Hour(t.timeTo),
+                computeDurationText(t.timeFrom, t.timeTo),
+                t.location,
+                t.mapUrl || '',
+                t.inspector,
+                t.executor,
+                t.status,
+                t.notes || ''
+            ]);
+
+            // إضافة BOM لدعم اللغة العربية في برنامج Excel بدون تشويه الحروف
+            const csvContent = '\uFEFF' + [
+                headers.join(','),
+                ...rows.map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(','))
+            ].join('\n');
+
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.setAttribute('href', url);
+            link.setAttribute('download', `ملخص_العمل_اليومي_${getTodayISO()}.csv`);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+
+            showToast('تم تصدير ملف Excel (CSV) بنجاح', 'success');
+        }
+
+        // ==========================================
+        // 7. أدوات مساعدة (Toast & XSS Escape)
+        // ==========================================
+        function escapeHTML(str) {
+            if (!str) return '';
+            return String(str)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#039;');
+        }
+
+        function showToast(message, type = 'success') {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+
+            const colors = {
+                success: 'bg-slate-900 text-white border-emerald-500',
+                info: 'bg-slate-800 text-white border-brand-500',
+                error: 'bg-rose-900 text-white border-rose-500'
+            };
+
+            const icons = {
+                success: 'check-circle',
+                info: 'info',
+                error: 'alert-circle'
+            };
+
+            toast.className = `flex items-center gap-2.5 px-4 py-3 rounded-xl shadow-lg border-r-4 text-sm font-semibold transition-all duration-300 transform translate-y-2 opacity-0 ${colors[type] || colors.success}`;
+            toast.innerHTML = `
+                <i data-lucide="${icons[type] || 'check-circle'}" class="w-4 h-4 shrink-0"></i>
+                <span>${escapeHTML(message)}</span>
+            `;
+
+            container.appendChild(toast);
+            lucide.createIcons();
+
+            requestAnimationFrame(() => {
+                toast.classList.remove('translate-y-2', 'opacity-0');
+            });
+
+            setTimeout(() => {
+                toast.classList.add('opacity-0', 'translate-y-2');
+                setTimeout(() => toast.remove(), 300);
+            }, 3200);
+        }
+
+        // ==========================================
+        // 8. تهيئة التطبيق عند التحميل
+        // ==========================================
+        window.addEventListener('DOMContentLoaded', () => {
+            loadTasksFromStorage();
+            renderTasks();
+            lucide.createIcons();
+        });
+    </script>
+</body>
+</html>
